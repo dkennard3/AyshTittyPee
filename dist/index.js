@@ -1,6 +1,10 @@
-import express from "express";
 import { config } from "./config.js";
-import { ErrorBadRequest400, ErrorUnauthorized401, ErrorForbidden403, ErrorNotFound404 } from "./AyshTittyPeeErrors.js";
+import express from "express";
+import { createUser, deleteAllUsers, createNewChirp, getAllChirps, getChirpById, getUserByEmail } from "./db/queries/users.js";
+import { ErrorBadRequest400, ErrorForbidden403, ErrorNotFound404 } from "./AyshTittyPeeErrors.js";
+import { hashPassword, checkPasswordHash } from "./auth.js";
+// const migrationClient = postgres(config.db.url, { max: 1 });
+// await migrate(drizzle(migrationClient), config.db.migrationConfig);
 const app = express();
 const PORT = 8080;
 function middlewareLogResponses(req, res, next) {
@@ -21,31 +25,92 @@ function middlewareMetricsInc(req, res, next) {
     next();
 }
 ;
-function errorHandler(err, req, res, next) {
+function myErrorHandler(err, req, res, next) {
     console.log(err);
-    // res.status(500).json({ "error": "Something went wrong on our end" });
-    if (err instanceof ErrorBadRequest400)
-        res.status(400);
-    else if (err instanceof ErrorUnauthorized401)
-        res.status(401);
-    else if (err instanceof ErrorForbidden403)
-        res.status(403);
-    else if (err instanceof ErrorNotFound404)
-        res.status(404);
-    else
-        res.status(500);
-    res.send(JSON.stringify({ "error": err.message }));
-    next();
+    const errReturn = { "error": err.message };
+    if (err.name === "ErrorBadRequest400") {
+        res.status(400).json(errReturn);
+    }
+    else if (err.name === "ErrorUnauthorized401") {
+        res.status(401).json(errReturn);
+    }
+    else if (err.name === "ErrorForbidden403") {
+        res.status(403).json(errReturn);
+    }
+    else if (err.name === "ErrorNotFound404") {
+        res.status(404).json(errReturn);
+    }
+    else {
+        res.status(500).send();
+    }
 }
 app.use(express.json());
-app.use(errorHandler);
 app.use(middlewareLogResponses);
 app.use("/", express.static("./src/app"));
 app.use("/app", middlewareMetricsInc, express.static("./src/app"));
+app.use(myErrorHandler);
+// existing User login 
+app.post("/api/login", async (req, res, next) => {
+    let user;
+    let passMatch;
+    try {
+        const email = req.body["email"];
+        const password = req.body["password"];
+        user = await getUserByEmail(email);
+        passMatch = await checkPasswordHash(password, user.hashedPassword);
+        console.log("hihihihihi");
+        /*if (!(passMatch && user))*/ //throw new ErrorUnauthorized401("Incorrect email or password");
+        // else {
+        const userRes = {
+            id: user.id,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            email: user.email
+        };
+        res.status(200).send(userRes);
+        // }
+        // res.send(userRes);
+    }
+    catch (e) {
+        // res.status(401);
+        // next(new ErrorUnauthorized401("Incorrect email or password"));
+        next(e);
+    }
+});
+// create new User/Account
+app.post("/api/users", async (req, res) => {
+    const email = req.body["email"];
+    const password = req.body["password"];
+    const user = { email: email, hashedPassword: await hashPassword(password) };
+    const result = await createUser(user);
+    const userRes = result;
+    res.status(201);
+    res.send(userRes);
+});
+app.post("/admin/reset", async (req, res) => {
+    if (config.db.platform != "dev")
+        throw ErrorForbidden403;
+    else {
+        await deleteAllUsers();
+        config.fileserverhits = 0;
+    }
+    res.send();
+});
+app.post("/api/chirps", async (req, res) => {
+    const pBody = req.body;
+    const msg = pBody["body"];
+    if (msg.length > 140) {
+        throw new ErrorBadRequest400("Chirp is too long. Max length is 140");
+    }
+    msg.replace(/kerfuffle|sharbert|fornax/g, "****");
+    const chirp = { body: msg, userId: pBody["userId"] };
+    const result = await createNewChirp(chirp);
+    res.status(201);
+    res.send(JSON.stringify(result));
+});
 // app.get() has to have the res object do a .send() EVERY SINGLE TIME OR IT WILL HANG FOREVER
 app.get("/admin/metrics", (req, res) => {
     res.set("Content-Type", "text/html; charset=utf-8");
-    // res.send(`Hits: ${config.fileserverhits}`);
     res.send(`
 <html>
   <body>
@@ -54,24 +119,17 @@ app.get("/admin/metrics", (req, res) => {
   </body>
 </html>`);
 });
-app.post("/admin/reset", (req, res) => {
-    config.fileserverhits = 0;
-    res.send();
+app.get("/api/chirps", async (req, res) => {
+    res.status(200);
+    res.send(await getAllChirps());
 });
-app.post("/api/validate_chirp", (req, res, next) => {
-    const pBody = req.body;
-    if (pBody["body"].length > 140) {
-        // res.status(400).send(JSON.stringify({ "error": "Chirp is too long" }));	
-        errorHandler(new ErrorBadRequest400("Chirp is too long. Max length is 140"), req, res, next);
-    }
-    let chunks = pBody["body"].split(" ");
-    const badWords = ["kerfuffle", "sharbert", "fornax"];
-    chunks.forEach((chunk) => {
-        if (badWords.indexOf(chunk.toLowerCase()) != -1) {
-            chunks[chunks.indexOf(chunk)] = "****";
-        }
-    });
-    res.status(200).send(JSON.stringify({ "cleanedBody": chunks.join(" ") }));
+app.get("/api/chirps/:chirpId", async (req, res) => {
+    const id = req.params.chirpId;
+    const result = await getChirpById(id);
+    if (result)
+        res.status(200).send(result);
+    else
+        throw ErrorNotFound404;
 });
 app.get("/api/healthz", (req, res) => {
     res.set("Content-Type", "text/plain; charset=utf-8");

@@ -1,30 +1,27 @@
-class ErrorBadRequest400 extends Error {
+export class ErrorBadRequest400 extends Error {
 	constructor(message: string) {
 		super(message);
+		this.name = "ErrorBadRequest400";
 	}
 }
 
-class ErrorUnauthorized401 extends Error {
+export class ErrorUnauthorized401 extends Error {
 	constructor(message: string) {
 		super(message);
+		this.name = "ErrorUnauthorized401";
 	}
 }
 
-class ErrorForbidden403 extends Error {
+export class ErrorForbidden403 extends Error {
 	constructor(message: string) {
 		super(message);
+		this.name = "ErrorForbidden403";
 	}
 }
 
-class ErrorNotFound404 extends Error {
+export class ErrorNotFound404 extends Error {
 	constructor(message: string) {
 		super(message);
+		this.name = "ErrorNotFound404";
 	}
 }
-
-export {
-	ErrorBadRequest400,
-	ErrorUnauthorized401,
-	ErrorForbidden403,
-	ErrorNotFound404
-};

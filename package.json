@@ -8,12 +8,15 @@
 		"build": "npx tsc",
 		"dev": "npx tsc && node dist/index.js",
 		"start": "node dist/index.js",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"generate": "drizzle-kit generate",
+		"migrate": "drizzle-kit migrate"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"devDependencies": {
+		"@types/bcrypt": "^5.0.2",
 		"@types/express": "^5.0.2",
 		"@types/node": "^22.15.21",
 		"dotenv": "^16.5.0",
@@ -24,5 +27,11 @@
 		"prettier": "^3.5.3",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.8.3"
+	},
+	"dependencies": {
+		"bcrypt": "^6.0.0",
+		"drizzle-kit": "^0.31.1",
+		"drizzle-orm": "^0.44.0",
+		"postgres": "^3.4.7"
 	}
 }

@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1748517213196,
+      "tag": "0000_chemical_ozymandias",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1748713679603,
+      "tag": "0001_awesome_silk_fever",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1748713844629,
+      "tag": "0002_abandoned_thena",
+      "breakpoints": true
+    }
+  ]
+}
