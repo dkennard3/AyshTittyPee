@@ -48,6 +48,7 @@ function middlewareMetricsInc(req: Request, res: Response, next: NextFunction) {
 function myErrorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
 	console.log(err);
 	const errReturn = { "error": err.message };
+	console.log(errReturn);
 	if (err.name === "ErrorBadRequest400") { res.status(400).json(errReturn); }
 	else if (err.name === "ErrorUnauthorized401") { res.status(401).json(errReturn); }
 	else if (err.name === "ErrorForbidden403") { res.status(403).json(errReturn); }
@@ -61,35 +62,38 @@ app.use(middlewareLogResponses);
 app.use("/", express.static("./src/app"));
 app.use("/app", middlewareMetricsInc, express.static("./src/app"));
 
-app.use(myErrorHandler);
 // existing User login 
 app.post("/api/login", async (req, res, next) => {
-	let user;
+	let user: NewUser;
 	let passMatch;
 	try {
 		const email = req.body["email"];
 		const password = req.body["password"];
 		user = await getUserByEmail(email);
-		passMatch = await checkPasswordHash(password, user.hashedPassword);
-		console.log("hihihihihi");
-		/*if (!(passMatch && user))*/ //throw new ErrorUnauthorized401("Incorrect email or password");
-		// else {
-		const userRes: UserResponse = {
-			id: user.id,
-			createdAt: user.createdAt,
-			updatedAt: user.updatedAt,
-			email: user.email
-		};
+		passMatch = await checkPasswordHash(password, user.hashedPassword as string)
+			.then((result) => {
+				if (!result) {
+					throw new ErrorUnauthorized401("Incorrect email or password");
+				}
 
-		res.status(200).send(userRes);
-		// }
-		// res.send(userRes);
+				const userRes: UserResponse = {
+					id: user.id,
+					createdAt: user.createdAt,
+					updatedAt: user.updatedAt,
+					email: user.email
+				};
+
+				res.status(200).send(userRes);
+			});
 	} catch (e) {
-		// res.status(401);
-		// next(new ErrorUnauthorized401("Incorrect email or password"));
 		next(e);
 	}
 });
+
+// CALLING NEXT() WILL CALL THE NEXT MIDDLEWARE FUNC __AFTER__ WHERE NEXT IS CALLED FROM
+// THANKS A LOT EXPRESS DOCS FOR TOTALLY BEING SPECIFIC ABOUT THIS AND WASTING
+// HALF MY WEEKEND -- FUCK YOU NERDS!
+app.use(myErrorHandler);
 
 // create new User/Account
 app.post("/api/users", async (req, res) => {
@@ -97,9 +101,14 @@ app.post("/api/users", async (req, res) => {
 	const password = req.body["password"];
 	const user: NewUser = { email: email, hashedPassword: await hashPassword(password) };
 	const result = await createUser(user);
-	const userRes: UserResponse = result;
-	res.status(201);
-	res.send(userRes);
+	const userRes: UserResponse = {
+		id: result.id,
+		createdAt: result.createdAt,
+		updatedAt: result.updatedAt,
+		email: result.email
+	};
+
+	res.status(201).send(userRes);
 });
 
 app.post("/admin/reset", async (req, res) => {
