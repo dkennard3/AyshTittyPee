@@ -1,4 +1,5 @@
 process.loadEnvFile();
+import { env } from "node:process";
 import migrationConfig from "./db/DBConfig.js";
 type APIConfig = {
 	fileserverhits: number;
@@ -8,6 +9,8 @@ type APIConfig = {
 		platform: any;
 
 	};
+	token: any;
+	polkaAPIKey: any;
 };
 
 function envOrThrow(key: string) {
@@ -23,5 +26,7 @@ export const config: APIConfig = {
 		url: envOrThrow("DB_URL"),
 		migrationConfig: migrationConfig,
 		platform: envOrThrow("PLATFORM")
-	}
+	},
+	token: envOrThrow("TOKEN"),
+	polkaAPIKey: envOrThrow("POLKA_KEY")
 };
